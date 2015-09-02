@@ -2,6 +2,7 @@ import config, json, cgi, sys, Websheet, re, os
 from utils import *
 
 cfg = config.config_jo
+jail = "/tmp/" # could use Config
 
 void_functions = []
 msgs = []
@@ -29,7 +30,7 @@ def compile( jail, dir, slug, code, tag="reference|student", translate_line=None
     compiling = execute(compiler_cmd, "")
     
     def check_compile_err():
-		
+        
         if (compiling.stderr != "" or compiling.returncode != 0
         or not os.path.isfile(jail + dir + slug + suffix)):
 
@@ -102,48 +103,24 @@ def run(slug, tag="reference|student" ):
     return running
     
         
-def test():
-    # /usr/bin/mcs hello.cs
-    #./safeexec --fsize 5  --nproc 1 --exec /usr/bin/mono tests/hello.exe
-    jail = "/tmp/"
-    studir = "stud/"
-    slug = "hello"
-    code = """
-      using System; 
-      public class HelloWorld
-         static public void Main (){
-            Console.WriteLine ("Hello Mono World");
-         }
-      }
-    """
-    
-    testcompile = compile( jail, studir, slug, code )
-    print( get_attrs( testcompile ) )
-    #~ print( testcompile.error )
-    
-    testrun = run( slug )
-    print( get_attrs( testrun ) )
-    
-
-test()
 
 def grade(reference_solution, student_solution, translate_line, websheet):
 
-    result = ''
-    
+
     # build reference
     if not websheet.example:
         refdir = config.create_tempdir()
-        refcompile = compile( jail, studir, slug, reference_solution )
+        refcompile = compile( jail, refdir, websheet.slug, reference_solution )
         if refcompile.error: return refcompile.error
 
 
     # build student
     studir = config.create_tempdir()
-    stucompile = compile( jail, refdir, slug, student_solution, 'student', translate_line )
+    stucompile = compile( jail, studir, websheet.slug, student_solution, 'student', translate_line )
     
+    # result = output to user/student
     result = "<div>Compiling: saving your code as "+tt(websheet.slug+".cpp")
-    result += " and calling "+tt(" ".join(["compile"] + compile_args))
+    result += " and calling "+tt(" ".join(["compile"] ))
     if stucompile.stdout!="":
       result += pre(stucompile.stdout)
     result += "</div>"
@@ -161,7 +138,8 @@ def grade(reference_solution, student_solution, translate_line, websheet):
       if cpptype in known: return known[cpptype]
       return None
 
-    for test in websheet.tests:
+    #~ for test in websheet.tests:
+    for test in json.loads(websheet.tests):
 
         if websheet.lang=='C#': # normal test, calling main
 
@@ -181,14 +159,14 @@ def grade(reference_solution, student_solution, translate_line, websheet):
         if not websheet.example:
             os.chdir(jail + refdir)      
 
-            runref = run( websheet.slug , dir=refdir, tag='reference')
+            runref = run( websheet.slug, tag='reference')
 
             if runref.error:
                 return ("Internal Error", runref.error)
 
         # RUN STUDENT
         os.chdir(jail + studir)      
-        runstu = run( websheet.slug , dir=studir, tag='reference')
+        runstu = run( websheet.slug, tag='reference')
         
         if runstu.error:
             return ("Sandbox Limit", runstu.error)
@@ -230,3 +208,60 @@ def grade(reference_solution, student_solution, translate_line, websheet):
       result += "<div>Passed all tests!</div>"
       return ("Passed", result)
       
+if __name__ == "__main__":
+
+    test_code = """
+          using System; 
+          public class HelloWorld{
+             static public void Main (){
+                Console.WriteLine ("Hello, Mono!");
+             }
+          }
+        """
+
+    def test_exec():
+        # /usr/bin/mcs hello.cs
+        #./safeexec --fsize 5  --nproc 1 --exec /usr/bin/mono tests/hello.exe
+        jail = "/tmp/"
+        studir = "stud/"
+        slug = "hello"
+        
+        testcompile = compile( jail, studir, slug, test_code )
+        print( get_attrs( testcompile ) )
+        #~ print( testcompile.error )
+        
+        testrun = run( slug )
+        print( get_attrs( testrun ) )
+        
+
+    #~ test_exec()
+
+
+    def test_grade():
+        #~ from submit import translate_line
+        def translate_line(ss_lineno):
+            ss_lineno = int(ss_lineno)
+            if ss_lineno in ss_to_ui_linemap:
+              return str(ss_to_ui_linemap[ss_lineno])
+            else:
+              return "???("+str(ss_lineno)+")" + "<!--" + json.dumps(ss_to_ui_linemap) + "-->"
+            
+        
+        
+        # cs/hello
+        definition = {"description":"\nFix this program so that it outputs <pre>Hello, Mono!</pre>\nfollowed by a newline character.\n","sharing":"open","remarks":"Export of cs/hello by dz0@users.noreply.github.com\nCopied from problem cpp/var-expr/hello (author: daveagp@gmail.com)\n","lang":"C#","source_code":"using System;\n \npublic class HelloWorld\n{\n    static public void Main ()\n    {\n\\[\n        Console.WriteLine (\"Hello, Mono!\");\n\\show:\n        Console WriteLine Hello Mono\n]\\\n    }\n}\n","tests":"[\n   {}\n]\n","attempts_until_ref":"1"}
+        #~ grade(reference_solution, student_solution, translate_line, websheet)
+        
+        websheet = Websheet.Websheet.from_name("cs/hello", False, 'anonymous')
+        print("TESTS:", repr(websheet.tests) )
+        
+        reference_solution = websheet.get_reference_solution("reference")
+        #~ reference_solution = test_code
+        #~ student_solution = test_code.replace('!', '')
+        student_solution = test_code
+        
+        result = grade(reference_solution, student_solution, translate_line, websheet)
+        print( "RESULT:\n", result )
+  
+    test_grade()
+        
