@@ -28,6 +28,17 @@ WS_CONFIG is the contents of ws-config.json and MUST BE KEPT PRIVATE since it wi
    */
 
 global $WS_AUTHINFO, $WS_CONFIG;
+
+if ( $_SERVER["HTTP_HOST"]=="localhost" ){
+$WS_AUTHINFO = array(
+    "logged_in"=>true, // hack for localhost by default
+    "username"=>"test@localhost",
+    "is_super"=>true,
+    "domain"=>"n/a",
+    "error_span"=>""
+    ); 
+}
+else{ // standardt
 $WS_AUTHINFO = array("logged_in"=>false); // by default
 
   // try to load the ws-config.json file and see if it includes required fields
@@ -316,3 +327,4 @@ else {
    $WS_AUTHINFO["info_span"] = $msg . '.</span>';
 }
 
+}

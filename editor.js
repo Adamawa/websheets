@@ -1,3 +1,4 @@
+
 var editor_schema = 
   [{key: 'description', type:'codemirror', mode:'html', label:'Description', howto: 'html markup<br>shown to student'},
    {key: 'epilogue', type: 'codemirror', mode:'html', optional: true, label: 'Epilogue', howto: 'html markup<br>shown when solved'},
@@ -11,21 +12,26 @@ var editor_schema =
     howto: 'Comments, history, license, etc.'},
 
    {key: 'lang', type: 'choice', label: 'Engine', default: '', 
-    choices: [["", "Select one..."], ["Java", "Java"], ["C++", "C++ (call main with stdin and args)"],
+    choices: [["", "Select one..."], ["C#", "C# (Mono)"],["Java", "Java"], ["C++", "C++ (call main with stdin and args)"],
               ["C++func", "C++ (call functions directly)"], ['multichoice', "Multiple true/false"],
               ["shortanswer", "Short answer"]]},
    {key: 'choices', lang: 'multichoice', type: 'codemirror', mode:'json', label: 'Choices',
     howto: 'json list of string, bool pairs<br>e.g. <tt>[["good", True],<br>["bad", False]]'},
    {key: 'answer', lang: 'shortanswer', type: 'string', label: 'Correct answer'},
+
+   {key: 'source_code', lang: 'C#', type: 'codemirror', mode:'java', label: 'Template / Reference solution'},
    {key: 'source_code', lang: 'Java', type: 'codemirror', mode:'java', label: 'Template / Reference solution'},
    {key: 'source_code', langs: ['C++', 'C++func'], type: 'codemirror', mode:'c++', label: 'Template / Reference solution'},
+
+   {key: 'tests', lang: 'C#', type: 'codemirror', mode:'json', label: 'C# test suite', howto:'See <a target="_blank" href="manual.html#cssuiteTODO">manual</a>'},
    {key: 'tests', lang: 'Java', type: 'codemirror', mode:'java', label: 'Java test suite', howto:'See <a target="_blank" href="manual.html#javasuite">manual</a>'},
    {key: 'tests', lang: 'C++', type: 'codemirror', mode:'json', label: 'C++ test suite',
     howto: 'json list of stdin/args tests<br>e.g. <tt>[{"stdin":"hi", "args":["4", "5"]},<br>{"stdin":"noargs"}]</tt><br>to just run once with no input use <tt>[{}]</tt>'},
    {key: 'tests', lang: 'C++func', type: 'codemirror', mode:'json', label: 'C++ test suite', howto:'See <a target="_blank" href="manual.html#cppfuncsuite">manual</a>'},
-   {key: 'verboten', optional: true, langs: ['Java', 'C++', 'C++func'], type: 'codemirror', mode:'json', label: 'Forbidden substrings',
+
+   {key: 'verboten', optional: true, langs: ['C#', 'Java', 'C++', 'C++func'], type: 'codemirror', mode:'json', label: 'Forbidden substrings',
     howto:'json list of strings<br>e.g. <tt>["for","while"]</tt>'},
-   {key: 'attempts_until_ref', langs: ['Java', 'C++', 'C++func'], default: 'infinity', optional: true, type: 'choice', label: 'Solution visibility', 
+   {key: 'attempts_until_ref', langs: ['C#', 'Java', 'C++', 'C++func'], default: 'infinity', optional: true, type: 'choice', label: 'Solution visibility', 
     choices: [["0", "Always"],
               ["1", "After 1 attempt"], ["2", "After solving or 2 attempts"],
               ["3", "After solving or 3 attempts"], ["4", "After solving or 4 attempts"],
@@ -51,6 +57,8 @@ var editor_schema =
 var codemirrors = {};
 
 $(function() {
+  console.log( websheets.authinfo ); //hack
+    
   if (websheets.editor_readonly) {
     $('body').addClass('readonly');
     $('#doing').html('Viewing');
