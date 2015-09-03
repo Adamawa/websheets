@@ -8,6 +8,7 @@
  "db-password": "...",
  "db-database": "...",
 
+ "cs_compiler":"mcs",
  "cpp_compiler":"g++",
  "//or put clang++, or path to one of these":"",
 
@@ -24,8 +25,11 @@
  "facebook-secret": "your facebook api secret key",
  "google-id":"your google api id",
  "google-secret":"your google api secret key",
- "GitHub-id":"your google api id",
- "GitHub-secret":"your google api secret key",
+ "//GitHub provider you should copy from additional-providers in 'hybridauth'":
+    "cp additional-providers/hybridauth-github/Providers/GitHub.php   hybridauth/Hybrid/Providers/",
+ "GitHub-id":"api id",
+ "GitHub-secret":"google api secret key",
+ 
 
  "//keep the 2 below only if your university uses google apps and you want to authenticate using it" : "",
  "google-apps-domain": "youruniversity.edu",
