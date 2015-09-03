@@ -119,7 +119,7 @@ def submit_and_log(websheet_name, student, client_request, meta):
     results = '<pre>' + cgi.escape(traceback.format_exc()) + '</pre>'
 
   if category.startswith("Internal Error"):
-    results = "<b><p>"+category+"; please report to course staff!</p></b>" + results
+    results = "<b><p>"+category+"; please report to course staff!</p></b>" + str(results)
 
   import copy
     

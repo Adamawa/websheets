@@ -204,7 +204,7 @@ def grade(reference_solution, student_solution, translate_line, websheet):
     result += "</div>"
 
     if stucompile.error:
-        result += "<div>Did not compile. Error message:"+pre(stucompile.error)+"</div>"
+        result += "<div>Did not compile. Error message:"+pre(': '.join(stucompile.error))+"</div>"
         return ("Syntax Error", result)
 
     # RUN TESTS
