@@ -2,7 +2,6 @@ import config, json, cgi, sys, Websheet, re, os
 from utils import *
 
 cfg = config.config_jo
-jail = "/tmp/" # could use Config
 # https://msdn.microsoft.com/en-us/library/windows/desktop/aa364232(v=vs.85).aspx
 blacklisted_words_txt = """
 using 
@@ -141,7 +140,7 @@ def run(slug, tag="reference|student", stdin="" ):
     cmd += ["--fsize", "5"]
     cmd += ["--nproc", "1"]
     cmd += ["--clock", "1"]
-    cmd += ["--mem", "40000"]
+    cmd += ["--mem", "600000"]   # TODO: move to config?
     cmd += ["--exec", slug+'.exe']
     #~ cmd += args
     
@@ -186,7 +185,7 @@ def run(slug, tag="reference|student", stdin="" ):
         
 
 def grade(reference_solution, student_solution, translate_line, websheet):
-
+    jail = cfg["java_jail-abspath"]
     # build reference
     if not websheet.example:
         refdir = config.create_tempdir()
@@ -288,6 +287,7 @@ def grade(reference_solution, student_solution, translate_line, websheet):
       return ("Passed", result)
       
 if __name__ == "__main__":
+    jail = "/tmp/" # could use Config
 
     test_code = """
           using System; 
@@ -311,7 +311,7 @@ if __name__ == "__main__":
         print( get_attrs( testrun ) )
         
 
-    #~ test_compile_and_run()
+    test_compile_and_run()
 
     def test_websheet_reference( slug ):
         websheet = Websheet.Websheet.from_name( slug, False, 'anonymous')
@@ -327,9 +327,9 @@ if __name__ == "__main__":
 
         test_compile_and_run( slug=slug.replace('/', '_'), code=code, stdin=stdin ) 
         
-    test_websheet_reference( "cs/hello" )
-    test_websheet_reference( "cs/var-expr/math" )
-        
+    #test_websheet_reference( "cs/hello" )
+    #test_websheet_reference( "cs/var-expr/math" )
+
 
     def test_grade():
         #~ from submit import translate_line
