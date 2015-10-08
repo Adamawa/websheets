@@ -288,6 +288,12 @@ def grade(reference_solution, student_solution, translate_line, websheet):
       
 if __name__ == "__main__":
     jail = "/tmp/" # could use Config
+    def get_attrs(obj):
+        return {
+            k:getattr(obj, k) 
+            for k in obj.__dict__.keys()
+            if not k.startswith('_') and not k.endswith('_')
+        }
 
     test_code = """
           using System; 
