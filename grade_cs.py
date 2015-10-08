@@ -87,8 +87,7 @@ void_functions = []
 
 suffix = '.cs'
 
-def execute(command, stdin):
-  return config.execute(command, stdin, output_encoding='Latin-1')
+from config import execute
 
 def compile( jail, dir, slug, code, tag="reference|student", translate_line=None ):
    
@@ -96,7 +95,7 @@ def compile( jail, dir, slug, code, tag="reference|student", translate_line=None
     os.chdir(jail + dir)
     
     # SAVE to FILE
-    with open(slug + ".cs", "w") as f:
+    with open(slug + ".cs", "w", encoding="utf-8") as f:
       f.write(code)
       
     # remove previous compilation result (if such exists)
@@ -144,7 +143,7 @@ def run(slug, tag="reference|student", stdin="" ):
     cmd += ["--exec", slug+'.exe']
     #~ cmd += args
     
-    running = execute(cmd, stdin)
+    running = execute(cmd, stdin, flag_badchars = True)
 
     def check_run_error():
 
