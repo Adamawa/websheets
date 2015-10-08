@@ -9,9 +9,3 @@ def pre(s, specialBlank = False):
 
 def tt(s):
   return "<code>" + cgi.escape(s) + "</code>"
-
-def get_attrs(obj):
-    return {k:getattr(obj, k) for k in obj.__dict__.keys()
-            if not k.startswith('_')
-            and not k.endswith('_') 
-            }
