@@ -215,19 +215,25 @@ def grade(reference_solution, student_solution, translate_line, websheet):
       #~ if cpptype in known: return known[cpptype]
       #~ return None
 
-    #~ for test in websheet.tests:
-    for test in json.loads(websheet.tests):
+    for test in websheet.tests:
+    #~ for test in json.loads(websheet.tests):
 
         if websheet.lang=='C#': # normal test, calling main
 
             stdin = test.get('stdin', "")
             args = test.get('args', [])
+            title = test.get('title', "")
+            hidden = test.get('hidden', False)
 
             cmd = websheet.slug
             cmd =  " ".join([cmd] + args)
 
+            if title: 
+                result += 'Title: "%s" '%title
             result += "<div>Running " + tt("./" + cmd)
-            if stdin:  result += " on input " + pre(stdin)
+            if hidden and stdin:   
+                result += " with hidden input "
+            elif stdin:  result += " on input " + pre(stdin)
             else:      result += "&hellip;"
             result += "</div>"
 
@@ -260,7 +266,7 @@ def grade(reference_solution, student_solution, translate_line, websheet):
 
         if (stucanon == refcanon 
           or stucanon == refcanon + "\n" and not refcanon.endswith("\n")):
-            result += "<div>Passed! Printed this correct output:"
+            result += "<div>Passed! Printed correct output:"
             result += pre(runstu.stdout, True) + "</div>"
         elif stucanon == refcanon + "\n":
             result += "<div>Failed! Printed this output:"
@@ -273,10 +279,13 @@ def grade(reference_solution, student_solution, translate_line, websheet):
             result += "which is almost correct but <i>you are missing a newline at the end</i>.</div>"
             return ("Failed Tests", result)
         else:
-            result += "<div>Failed! Printed this incorrect output:"
-            result += pre(runstu.stdout, True)
-            result += "Expected this correct output instead:"
-            result += pre(runref.stdout, True) + "</div>"
+            result += "<div>Failed!"
+            if not hidden: 
+                result += " Printed this incorrect output:"
+                result += pre(runstu.stdout, True)
+                result += "Expected this correct output instead:"
+                result += pre(runref.stdout, True) 
+            result += "</div>"
             return ("Failed Tests", result)
 
     if websheet.example:
