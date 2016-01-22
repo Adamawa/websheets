@@ -58,6 +58,10 @@ tempdirs = []
 def create_tempdir():
     import random
     loc = "scratch/" + str(random.randint(100000000000, 999999999999))
+    try: # for fresh install/testing
+        os.mkdir(config_jo["java_jail-abspath"] + "scratch/")        
+    except OSError as e:
+        pass # already created
     os.mkdir(config_jo["java_jail-abspath"] + loc)
     global tempdirs
     tempdirs += [config_jo["java_jail-abspath"] + loc]
