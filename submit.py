@@ -74,18 +74,23 @@ def submit_and_log(websheet_name, student, client_request, meta):
                +("&hellip;" if i+5<len(ss) else "")
                +"</pre></div>")
 
-    for verboten in websheet.verboten:
-        for chunk in user_poschunks:
-          if verboten in chunk['code']:
-            return("Pre-syntax Error",
-                   "<div class='pre-syntax-error'>" + 
-                   "You can't use " + tt(verboten) + 
-                   " in this exercise.</div>")
+    def check_verboten( blacklisted_words ):  # checks forbidden words
+        for verboten in blacklisted_words:
+            for chunk in user_poschunks:
+              if verboten in chunk['code']:
+                if re.search(r'\b%s\b'%verboten, chunk['code'], re.DOTALL ): # search full words
+                    return("Pre-syntax Error",
+                       "<div class='pre-syntax-error'>" + 
+                       "You can't use " + tt(verboten) + 
+                       " in this exercise.</div>")
+                       
+    verboten_msg = check_verboten( websheet.verboten )
+    if verboten_msg: return verboten_msg
 
     #print(cgi.escape(student_solution[1]))
     #print(cgi.escape(reference_solution))
 
-    if websheet.lang.startswith("C++"):
+    if websheet.lang.startswith("C"): # for C++ and C#
       student_solution = student_solution[1]
       if websheet.lang == "C++func":
         student_solution = re.sub(r"\bmain\b", "__student_main__", student_solution)
@@ -97,18 +102,24 @@ def submit_and_log(websheet_name, student, client_request, meta):
       import grade_java
       # java needs to know student name to look up their solutions for dependencies
       return grade_java.grade(reference_solution, student_solution, translate_line, websheet, student)
+    if websheet.lang.startswith("C#"):
+      import grade_cs
+      verboten_msg = check_verboten( grade_cs.blacklisted_words )
+      if verboten_msg: return verboten_msg      
+      #~ print("student_solution", student_solution)
+      return grade_cs.grade(reference_solution, student_solution, translate_line, websheet)
     
 
   try:
     category, results = compile_and_run()
-    config.uncreate_tempdirs()
+    config.uncreate_tempdirs() 
   except Exception:
     category = "Internal Error (Script)"
     import traceback
     results = '<pre>' + cgi.escape(traceback.format_exc()) + '</pre>'
 
   if category.startswith("Internal Error"):
-    results = "<b><p>"+category+"; please report to course staff!</p></b>" + results
+    results = "<b><p>"+category+"; please report to course staff!</p></b>" + str(results)
 
   import copy
     

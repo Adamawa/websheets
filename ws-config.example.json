@@ -1,18 +1,22 @@
 {
- "safeexec-executable-abspath":"/absolute/path/to/.../safeexec/safeexec",
- "java_jail-abspath":"/absolute/path/to/.../java_jail/",
+ "safeexec-executable-abspath":"/home/jurgis/WS/safeexec/safeexec",
+ "java_jail-abspath":"/tmp/",
+ 
+ "cs_compiler":"mcs",
 
- "db-enabled": false,
- "db-host": "...",
- "db-user": "...",
- "db-password": "...",
- "db-database": "...",
+ "db-enabled": true,
+ "db-host": "localhost",
+ "db-user": "root",
+ "db-password": "blabla",
+ "db-database": "websheets",
 
+
+ "cs_compiler":"mcs",
  "cpp_compiler":"g++",
- "//or put clang++, or path to one of these":"",
+  "//or put clang++, or path to one of these":"",
 
- "baseurl": "http://your-website.../websheets",
-
+ "baseurl": "http://localhost/websheets/",
+ 
  "//list of email addresses to noftify when new problem is created":"",
  "notify_new":[],
 
@@ -31,8 +35,11 @@
  "facebook-secret": "your facebook api secret key",
  "google-id":"your google api id",
  "google-secret":"your google api secret key",
- "GitHub-id":"your google api id",
- "GitHub-secret":"your google api secret key",
+ "//GitHub provider you should copy from additional-providers in 'hybridauth'":
+    "cp additional-providers/hybridauth-github/Providers/GitHub.php   hybridauth/Hybrid/Providers/",
+ "GitHub-id":"api id",
+ "GitHub-secret":"google api secret key",
+ 
 
  "//keep the 2 below only if your university uses google apps and you want to authenticate using it" : "",
  "google-apps-domain": "youruniversity.edu",
