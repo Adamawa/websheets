@@ -1,292 +1,238 @@
 import config, json, cgi, sys, Websheet, re, os
 from utils import *
-from config import execute
+
+cfg = config.config_jo
+# https://msdn.microsoft.com/en-us/library/windows/desktop/aa364232(v=vs.85).aspx
+blacklisted_words_txt = """
+"""
+blacklisted_words = [line.strip()  for line in  blacklisted_words_txt.split('\n')    if len(line) < 42 and line.strip()]
+
 
 void_functions = []
 
-def grade(reference_solution, student_solution, translate_line, websheet):
-    cpp_compiler = config.config_jo["cpp_compiler"]
+suffix = '.cpp'
 
-    unusable_cppflags = []
+from config import execute
 
-    # following http://bits.usc.edu/cs103/compile/
+def compile( jail, dir, slug, code, tag="reference|student", translate_line=None ):
+   
+    os.makedirs( jail + dir, 0o755, exist_ok=True);
+    os.chdir(jail + dir)
+    
+    # SAVE to FILE
+    with open(slug + ".cpp", "w", encoding="utf-8") as f:
+      f.write(code)
+      
+    # remove previous compilation result (if such exists)
+    if os.path.isfile( slug ):
+        os.remove( slug )
+    
+    
+    # COMPILE
     default_cppflags = ["-g",
                         "-Wall", "-Wshadow", "-Wunreachable-code",
                         "-Wconversion",
                         "-Wno-sign-compare", "-Wno-write-strings"]
-    if "clang" in cpp_compiler: # good options, but not in g++
+    if "clang" in cfg["cpp_compiler"]: # good options, but not in g++
         default_cppflags += ["-Wvla", "-Wno-shorten-64-to-32", "-Wno-sign-conversion", "-fsanitize=undefined"]
     else:
       unusable_cppflags = ["-Wno-array-bounds","-Wno-return-stack-address","-Wunreachable-code"]
-      # didn't seem to help :(
-      # default_cppflags += ["-fextended-identifiers", "-finput-charset=UTF-8"]
 
-    websheet.unusable_cppflags = unusable_cppflags
-
-    # create a temp directory
-    refdir = config.create_tempdir()
-    studir = config.create_tempdir()
-
-    # put slug.cpp
-    jail = config.config_jo["java_jail-abspath"]
-    refcpp = open(jail + refdir + websheet.slug + ".cpp", "w", encoding="utf-8")
-    refcpp.write(reference_solution)
-    refcpp.close()
     
-    stucpp = open(jail + studir + websheet.slug + ".cpp", "w", encoding="utf-8")
-    stucpp.write(student_solution)
-    stucpp.close()
-    
-    suffix = ""
-    if websheet.lang == "C++func": suffix = ".o"
+    compile_args = [slug + ".cpp", "-o", slug]
 
-    compile_list = [cpp_compiler] + websheet.cppflags(default_cppflags)
+    #~ def cppflags( defaultflags):
+        #~ flags = [i for i in defaultflags if i not in self.cppflags_remove]
+        #~ flags += self.cppflags_add
+        #~ return [i for i in flags if i not in self.unusable_cppflags]
+#~ 
+    #~ compile_list = [cpp_compiler] + cppflags(default_cppflags)
     
-    compile_args = []
-    if websheet.lang == "C++func":
-      compile_args += ["-c"]      
-    compile_args += [websheet.slug + ".cpp", "-o", websheet.slug + suffix]
+    compiler_cmd = [cfg["cpp_compiler"]] + default_cppflags + compile_args
 
+    compiling = execute(compiler_cmd, "")
+
+    
+    def check_compile_err():
+        
+        if (compiling.stderr != "" or compiling.returncode != 0
+        or not os.path.isfile(jail + dir + slug + suffix)):
+
+            if 'student' in tag.lower():   #  humanreadable info for students
+                errmsg = re.sub('(\.cpp:)(\d+)(?!\d)',   # should  be adapted for C#
+                       lambda m : m.group(1)+translate_line(m.group(2)),  
+                       compiling.stderr)
+                return ("Syntax Error", errmsg)
+                
+            else:     # for reference compilation - more detailed dump
+                return  (
+                    "Internal Error (Compiling %s)"%tag ,
+                    "cmd:"+pre(" ".join(compiler_cmd))+ # websheet.slug + suffix
+                    "<br>stdout:"+pre(compiling.stdout)+
+                    "<br>stderr:"+pre(compiling.stderr)+
+                    "<br>retval:"+pre(str(compiling.returncode))
+                    )                    
+                    
+    compiling.error  =  check_compile_err()
+    return compiling
+        
+        
+def run(slug, tag="reference|student", stdin="" ):
+    
+    cmd = [cfg["safeexec-executable-abspath"]]
+    #~ cmd += ["--chroot_dir", cfg["java_jail-abspath"]]
+    #~ cmd += ["--exec_dir", "/" + refdir]
+    cmd += ["--fsize", "5"]
+    cmd += ["--nproc", "1"]
+    cmd += ["--clock", "1"]
+    cmd += ["--mem", "600000"]   # TODO: move to config?
+    cmd += ["--exec", slug]
+    #~ cmd += args
+    
+    running = execute(cmd, stdin, flag_badchars = True)
+
+    def check_run_error():
+
+        if running.returncode != 0 or not running.stderr.startswith("OK"):
+
+            if 'student' in tag.lower():   #  for students -- humanreadable info 
+                errmsg = running.stderr
+                if "elapsed time:" in errmsg:
+                  errmsg = errmsg[:errmsg.index("elapsed time:")]
+                errmsg = errmsg.replace("Command terminated by signal (8: SIGFPE)",
+                                        "Floating point exception")
+                errmsg = errmsg.replace("Command terminated by signal (11: SIGSEGV)",
+                                        "Segmentation fault (core dumped)")
+                result = "<div>Crashed! "
+                if errmsg != "":
+                  result += "Error messages:" + pre(errmsg)
+                if running.stdout != "":
+                  result += "Produced this output:"+pre(running.stdout)
+        #        result += "Return code:"+pre(str(running.returncode))
+                result += "</div>"
+                
+                return ("Sandbox Limit", result)
+
+                
+            else:   # for reference -- more detailed
+              return ("Internal Error", 
+                      "<div>Reference solution crashed!"+
+                      "<br>stdout:"+pre(running.stdout)  +
+                      "stderr:"+pre(running.stderr)      +
+                      "val:"+pre(str(running.returncode))+
+                      "</div>" 
+                      )
+        
+    running.error = check_run_error()
+    
+    return running
+    
+        
+
+def grade(reference_solution, student_solution, translate_line, websheet):
+    jail = cfg["java_jail-abspath"]
     # build reference
     if not websheet.example:
-      os.chdir(jail + refdir)
-      refcompile = execute(compile_list + compile_args, "")
-      if (refcompile.stderr != "" or refcompile.returncode != 0
-          or not os.path.isfile(jail + refdir + websheet.slug + suffix)):
-        return ("Internal Error (Compiling Reference)",
-                "cmd:"+pre(" ".join(compile_list))+
-                "<br>stdout:"+pre(refcompile.stdout)+
-                "<br>stderr:"+pre(refcompile.stderr)+
-                "<br>retval:"+pre(str(refcompile.returncode)))
+        refdir = config.create_tempdir()
+        refcompile = compile( jail, refdir, websheet.slug, reference_solution )
+        if refcompile.error: return refcompile.error
 
     # build student
-    os.chdir(jail + studir)
-    stucompile = execute(compile_list + compile_args, "")
-      
+    studir = config.create_tempdir()
+    stucompile = compile( jail, studir, websheet.slug, student_solution, 'student', translate_line )
+    
+    # result = output to user/student
     result = "<div>Compiling: saving your code as "+tt(websheet.slug+".cpp")
-    result += " and calling "+tt(" ".join(["compile"] + compile_args))
+    result += " and calling "+tt(" ".join(["compile"] ))
     if stucompile.stdout!="":
       result += pre(stucompile.stdout)
     result += "</div>"
-    if (stucompile.stderr != "" or stucompile.returncode != 0
-        or not os.path.isfile(jail + studir + websheet.slug + suffix)):
-      msg = re.sub('(\.cpp:)(\d+)(?!\d)', 
-                   lambda m : m.group(1)+translate_line(m.group(2)),
-                   stucompile.stderr)
-      result += "<div>Did not compile. Error message:"+pre(msg)+"</div>"
-      return ("Syntax Error", result)
 
+    if stucompile.error:
+        result += "<div>Did not compile. Error message:"+pre(': '.join(stucompile.error))+"</div>"
+        return ("Syntax Error", result)
+
+    # RUN TESTS
     if len(websheet.tests)==0:
       return ("Internal Error", "No tests defined!")
 
-    def example_literal(cpptype):
-      known = {"int":"0", "double":"0.0", "bool":"false", "char":"'x'", "string":'""', "char*": '(char*)NULL', "char[]": '""'}
-      if cpptype in known: return known[cpptype]
-      return None
+    #~ def example_literal(cpptype):
+      #~ known = {"int":"0", "double":"0.0", "bool":"false", "char":"'x'", "string":'""', "char*": '(char*)NULL', "char[]": '""'}
+      #~ if cpptype in known: return known[cpptype]
+      #~ return None
 
     for test in websheet.tests:
-      if websheet.lang =='C++func' and test[0]=="check-function":
-        funcname = test[1]
-        returntype = test[2]
-        if (returntype == "void"):
-          global void_functions
-          void_functions += [funcname]
-        argtypes = test[3]
-        literals = [None] * len(argtypes)
-        for i in range(len(literals)):
-          literals[i] = example_literal(argtypes[i])
-          if literals[i] == None:
-            return ("Internal Error", tt("need example_literal for " + argtypes[i]))
-        tester = student_solution 
-        tester += "\n#include <iostream>\n" + returntype + "(*some_unique_identifier)(" + ', '.join(argtypes) + ") = &" + funcname + ";"
-        tester += "\n" + " void even_uniquer() { " + funcname + "(" + ', '.join(literals) + ");}"
-        tester += "\n" + "int main() {}\n"
+    #~ for test in json.loads(websheet.tests):
 
-        newslug = websheet.slug + "test"
-        cpp = open(jail + refdir + newslug + ".cpp", "w", encoding="utf-8")
-        cpp.write(tester)
-        cpp.close()
+        if websheet.lang=='C++': # normal test, calling main
 
-        compile_list = [cpp_compiler] + websheet.cppflags(default_cppflags)
+            stdin = test.get('stdin', "")
+            args = test.get('args', [])
+            title = test.get('title', "")
+            hidden = test.get('hidden', False)
 
-        compile_list += [newslug + ".cpp", "-o", newslug + suffix]
+            cmd = websheet.slug
+            cmd =  " ".join([cmd] + args)
 
-        os.chdir(jail + refdir)
-        refcompile = execute(compile_list, "")
+            if title: 
+                result += 'Title: "%s" '%title
+            result += "<div>Running " + tt("./" + cmd)
+            if hidden and stdin:   
+                result += " with hidden input "
+            elif stdin:  result += " on input " + pre(stdin)
+            else:      result += "&hellip;"
+            result += "</div>"
 
-        if (refcompile.stderr != "" or refcompile.returncode != 0
-            or not os.path.isfile(jail + refdir + websheet.slug + suffix)):
-          text = ("<div><!--"+refcompile.stderr+"-->"+
-                  "You must define a function " 
-                  + tt(funcname) + 
-                  ( " taking no arguments" if len(argtypes)==0 else 
-                    (" taking arguments of types " + tt(", ".join(argtypes))))
-                  + " and with return type " + tt(returntype) + "</div>")
 
-          return ("Failed Tests",
-                  text + "<!--" +
-                  "stdout:"+pre(refcompile.stdout)+
-                  "<br>stderr:"+pre(refcompile.stderr)+
-                  "<br>retval:"+pre(str(refcompile.returncode))
-          +"-->"   )
-              
-        continue # check-function
-      
-      if websheet.lang=='C++func' and test[0]=="call-function":
-        funcname = test[1]
-        args = test[2]        
-        testline = funcname + "(" + ', '.join(args) + ")"
-        testmain = "\n#include <iostream>\nint main(){std::cout << std::showpoint << std::boolalpha;"
-        if funcname not in void_functions: testmain += "std::cout << "
-        testmain += testline + ";}\n"
-        stutester = student_solution + testmain
-        reftester = reference_solution + testmain
-        newslug = websheet.slug + "test"
-
-        compile_list = [cpp_compiler] + websheet.cppflags(default_cppflags)
-
-        compile_list += [newslug + ".cpp", "-o", newslug]
-
+        # RUN REFERENCE
         if not websheet.example:
+            os.chdir(jail + refdir)      
 
-          cpp = open(jail + refdir + newslug + ".cpp", "w", encoding="utf-8")
-#        print(reftester)
-          cpp.write(reftester)
-          cpp.close()
-          os.chdir(jail + refdir)
-          refcompile = execute(compile_list, "")
+            runref = run( websheet.slug, tag='reference', stdin=stdin)
 
-          if (refcompile.stderr != "" or refcompile.returncode != 0
-              or not os.path.isfile(jail + refdir + newslug)):
-            return ("Internal Error: Reference Type Check Failed",
-                    "<!--" +
-                    "stdout:"+pre(refcompile.stdout)+
-                    "<br>stderr:"+pre(refcompile.stderr)+
-                    "<br>retval:"+pre(str(refcompile.returncode))
-                    +"-->"   )
+            if runref.error:
+                return ("Internal Error", runref.error)
 
-        cpp = open(jail + studir + newslug + ".cpp", "w", encoding="utf-8")
-        cpp.write(stutester)
-        cpp.close()
-        os.chdir(jail + studir)
-        stucompile = execute(compile_list, "")
-
-        if (stucompile.stderr != "" or stucompile.returncode != 0
-            or not os.path.isfile(jail + refdir + newslug)):
-          return ("Internal Error: Type Check Failed",
-                  "<!--" +
-                  "stdout:"+pre(stucompile.stdout)+
-                  "<br>stderr:"+pre(stucompile.stderr)+
-                  "<br>retval:"+pre(str(stucompile.returncode))
-          +"-->"   )
-         # call-function
-        if funcname in void_functions:
-          result += "<div>Calling " + tt(testline) + "&hellip;</div>"
-        else:
-          result += "<div>Printing the result of calling " + tt(testline) + "&hellip;</div>"
-
-        exename = newslug
-        stdin = ""
-        args = []
-
-      if websheet.lang=='C++': # normal test, calling main
-        stdin = ""
-        args = []
-        if 'stdin' in test:
-          stdin = test['stdin']
-        if 'args' in test:
-          args = test['args']
-
-        cmd = websheet.slug
-        if len(args) > 0: cmd += " " + " ".join(args)
-        result += "<div>Running " + tt("./" + cmd)
-
-        if len(stdin) > 0: 
-          result += " on input " + pre(stdin)
-        else:
-          result += "&hellip;"
-        result += "</div>"
-
-        exename = websheet.slug
+        # RUN STUDENT
+        os.chdir(jail + studir)      
+        runstu = run( websheet.slug, tag='student', stdin=stdin)
+        
+        if runstu.error:
+            return ("Sandbox Limit", runstu.error)
       
-      cfg = config.config_jo
+  
+        # TODO
+        if websheet.example:
+            result += "<div>Printed this output:"
+            result += pre(runstu.stdout) + "</div>"
+            continue
 
-      cmd = [cfg["safeexec-executable-abspath"]]
-      cmd += ["--chroot_dir", cfg["java_jail-abspath"]]
-      cmd += ["--exec_dir", "/" + refdir]
-      cmd += ["--clock", "1"]
-      cmd += ["--mem", "40000"]
-      cmd += ["--exec", exename]
-      cmd += args
+        stucanon = re.sub(' +$', '', runstu.stdout, flags=re.MULTILINE)
+        refcanon = re.sub(' +$', '', runref.stdout, flags=re.MULTILINE)
 
-      if not websheet.example:
-        runref = execute(cmd, stdin)
-
-        if runref.returncode != 0 or not runref.stderr.startswith("OK"):
-          result += "<div>Reference solution crashed!"
-          result += "<br>stdout:"+pre(runref.stdout)
-          result += "stderr:"+pre(runref.stderr)
-          result += "val:"+pre(str(runref.returncode))
-          result += "</div>"
-          return ("Internal Error", result)
-
-      cmd = [cfg["safeexec-executable-abspath"]]
-      cmd += ["--chroot_dir", cfg["java_jail-abspath"]]
-      cmd += ["--exec_dir", "/" + studir]
-      cmd += ["--clock", "1"]
-      cmd += ["--mem", "40000"]
-      cmd += ["--exec", exename]
-      cmd += args
-
-      runstu = execute(cmd, stdin, flag_badchars = True)
-      if websheet.slug == "ascii_table":
-          # this is the unique exercise where a corrcet solution uses a badchar
-          runstu.stdout = runstu.stdout.replace("\\u007f", chr(127))
-      if runstu.returncode != 0 or not runstu.stderr.startswith("OK"):
-        result += "<div>Crashed! "
-        errmsg = runstu.stderr
-        if "elapsed time:" in errmsg:
-          errmsg = errmsg[:errmsg.index("elapsed time:")]
-        errmsg = errmsg.replace("Command terminated by signal (8: SIGFPE)",
-                                "Floating point exception")
-        errmsg = errmsg.replace("Command terminated by signal (11: SIGSEGV)",
-                                "Segmentation fault (core dumped)")
-        if errmsg != "":
-          result += "Error messages:" + pre(errmsg)
-        if runstu.stdout != "":
-          result += "Produced this output:"+pre(runstu.stdout)
-#        result += "Return code:"+pre(str(runstu.returncode))
-        result += "</div>"
-        return ("Sandbox Limit", result)
-      
-      if websheet.example:
-        result += "<div>Printed this output:"
-        result += pre(runstu.stdout) + "</div>"
-        continue
-
-      stucanon = re.sub(' +$', '', runstu.stdout, flags=re.MULTILINE)
-      refcanon = re.sub(' +$', '', runref.stdout, flags=re.MULTILINE)
-
-      if (stucanon == refcanon 
+        if (stucanon == refcanon 
           or stucanon == refcanon + "\n" and not refcanon.endswith("\n")):
-        result += "<div>Passed! Printed this correct output:"
-        result += pre(runstu.stdout, True) + "</div>"
-      elif stucanon == refcanon + "\n":
-        result += "<div>Failed! Printed this output:"
-        result += pre(runstu.stdout, True)
-        result += "which is almost correct but <i>you printed an extra newline at the end</i>.</div>"
-        return ("Failed Tests", result)
-      elif refcanon == stucanon + "\n":
-        result += "<div>Failed! Printed this output:"
-        result += pre(runstu.stdout, True)
-        result += "which is almost correct but <i>you are missing a newline at the end</i>.</div>"
-        return ("Failed Tests", result)
-      else:
-        result += "<div>Failed! Printed this incorrect output:"
-        result += pre(runstu.stdout, True)
-        result += "Expected this correct output instead:"
-        result += pre(runref.stdout, True) + "</div>"
-        return ("Failed Tests", result)
+            result += "<div>Passed! Printed correct output:"
+            result += pre(runstu.stdout, True) + "</div>"
+        elif stucanon == refcanon + "\n":
+            result += "<div>Failed! Printed this output:"
+            result += pre(runstu.stdout, True)
+            result += "which is almost correct but <i>you printed an extra newline at the end</i>.</div>"
+            return ("Failed Tests", result)
+        elif refcanon == stucanon + "\n":
+            result += "<div>Failed! Printed this output:"
+            result += pre(runstu.stdout, True)
+            result += "which is almost correct but <i>you are missing a newline at the end</i>.</div>"
+            return ("Failed Tests", result)
+        else:
+            result += "<div>Failed!"
+            if not hidden: 
+                result += " Printed this incorrect output:"
+                result += pre(runstu.stdout, True)
+                result += "Expected this correct output instead:"
+                result += pre(runref.stdout, True) 
+            result += "</div>"
+            return ("Failed Tests", result)
 
     if websheet.example:
       return ("Example", result)
@@ -294,3 +240,80 @@ def grade(reference_solution, student_solution, translate_line, websheet):
       result += "<div>Passed all tests!</div>"
       return ("Passed", result)
       
+if __name__ == "__main__":
+    jail = "/tmp/" # could use Config
+    def get_attrs(obj):
+        return {
+            k:getattr(obj, k) 
+            for k in obj.__dict__.keys()
+            if not k.startswith('_') and not k.endswith('_')
+        }
+
+    test_code = """
+          using System; 
+          public class HelloWorld{
+             static public void Main (){
+                Console.WriteLine ("Hello, Mono!");
+             }
+          }
+        """
+
+    def test_compile_and_run( jail = "/tmp/", studir = "stud/", slug = "hello", code=test_code, stdin=""):
+        # g++ ??? hello.cpp
+        #./safeexec --fsize 5  --nproc 1 --exec /usr/bin/mono tests/hello
+
+        
+        testcompile = compile( jail, studir, slug, code )
+        print( get_attrs( testcompile ) )
+        #~ print( testcompile.error )
+        
+        testrun = run( slug, stdin=stdin )
+        print( get_attrs( testrun ) )
+        
+
+    test_compile_and_run()
+
+    def test_websheet_reference( slug ):
+        websheet = Websheet.Websheet.from_name( slug, False, 'anonymous')
+        code = websheet.get_reference_solution("reference")
+        print( '\n', code )
+
+        # get test    stdin
+        stdin = ''
+        for test in json.loads(websheet.tests):
+            if 'stdin' in test :
+                stdin = test['stdin']
+                if stdin: break
+
+        test_compile_and_run( slug=slug.replace('/', '_'), code=code, stdin=stdin ) 
+        
+    #test_websheet_reference( "cs/hello" )
+    #test_websheet_reference( "cs/var-expr/math" )
+
+
+    def test_grade():
+        #~ from submit import translate_line
+        def translate_line(ss_lineno):
+            ss_lineno = int(ss_lineno)
+            if ss_lineno in ss_to_ui_linemap:
+              return str(ss_to_ui_linemap[ss_lineno])
+            else:
+              return "???("+str(ss_lineno)+")" + "<!--" + json.dumps(ss_to_ui_linemap) + "-->"
+        
+        # cs/hello
+        definition = {"description":"\nFix this program so that it outputs <pre>Hello, Mono!</pre>\nfollowed by a newline character.\n","sharing":"open","remarks":"Export of cs/hello by dz0@users.noreply.github.com\nCopied from problem cpp/var-expr/hello (author: daveagp@gmail.com)\n","lang":"C#","source_code":"using System;\n \npublic class HelloWorld\n{\n    static public void Main ()\n    {\n\\[\n        Console.WriteLine (\"Hello, Mono!\");\n\\show:\n        Console WriteLine Hello Mono\n]\\\n    }\n}\n","tests":"[\n   {}\n]\n","attempts_until_ref":"1"}
+        #~ grade(reference_solution, student_solution, translate_line, websheet)
+        
+        websheet = Websheet.Websheet.from_name("cs/hello", False, 'anonymous')
+        print("TESTS:", repr(websheet.tests) )
+        
+        reference_solution = websheet.get_reference_solution("reference")
+        #~ reference_solution = test_code
+        #~ student_solution = test_code.replace('!', '')
+        student_solution = test_code
+        
+        result = grade(reference_solution, student_solution, translate_line, websheet)
+        print( "RESULT:\n", result )
+  
+    #~ test_grade()
+        
