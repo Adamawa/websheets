@@ -1,13 +1,13 @@
 import config
 
-authinfo = {}  
-authinfo['username'] = "jurgis.pralgauskis@gmail.com"
+#~ authinfo = {}  
+#~ authinfo['username'] = "jurgis.pralgauskis@gmail.com"
 
 
 result = {}
 for (student,) in config.get_rows(
-  "select user from ws_settings " +
-  "WHERE value = %s AND keyname = 'instructor';", [authinfo['username']]):
+  "select user from ws_settings ;"):  
+  #~ +  "WHERE value = %s AND keyname = 'instructor';", [authinfo['username']]):
   stuinfo = {}
   for (passed, time, problem) in config.get_rows(
     "SELECT passed, time, problem from ws_history where user = %s order by id asc;", [student]):
