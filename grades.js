@@ -16,6 +16,7 @@ $(document).ready(function(){
             problemElem.append(link);
             problemElem.append("<br>");
             problemElem.append("Išspręsta: "+obj[student][problem]['passed']+" "+obj[student][problem]['passDate']+"<br>");
+            if(obj[student][problem]['passed'])problemElem.attr("class", "problemDiv passed");
             problemElem.append("Bandymų: "+obj[student][problem]['tries']+"<br>");
 
             studentDiv.append(problemElem);

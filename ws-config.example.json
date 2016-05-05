@@ -1,5 +1,5 @@
 {
- "safeexec-executable-abspath":"/home/jurgis/WS/safeexec/safeexec",
+ "safeexec-executable-abspath":"/home/jurgis/WS/safeexe/safeexec",
  "java_jail-abspath":"/tmp/",
  
  "cs_compiler":"mcs",
@@ -15,7 +15,7 @@
  "cpp_compiler":"g++",
   "//or put clang++, or path to one of these":"",
 
- "baseurl": "http://localhost/websheets/",
+ "baseurl": "http://localhost/",
  
  "//list of email addresses to noftify when new problem is created":"",
  "notify_new":[],
