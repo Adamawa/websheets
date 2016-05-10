@@ -1,8 +1,9 @@
 <?php require_once('auth.php'); ?>
 <html>
 <head>
- <meta charset="UTF-8">
-<title>Websheets Grades</title>
+    <meta charset="UTF-8">
+    <title>Websheets Grades</title>
+    <link rel="stylesheet" type="text/css" href="grades.css">
 </head>
 <body>
 <div id='info'><?php echo $GLOBALS['WS_AUTHINFO']['info_span']; ?> </div>
@@ -25,7 +26,6 @@ if (!$WS_AUTHINFO['logged_in']) {
   else if (count($result['grades']) == 0)
     echo "You have no students.";
   else {
-    echo "In JSON format, this lists: {ever passed?, num submissions until passing, [date of first pass]}";
     /*$count = 0;
     echo "<pre id='jsonList'>{";
     foreach ($result['grades'] as $student => $info) {
@@ -46,13 +46,11 @@ if (!$WS_AUTHINFO['logged_in']) {
 
       $count = 0;
       $students = array();
+      echo '<input type="text" id="searchField"><input type="button" value="Search" id="searchButton">';
       foreach($result['grades'] as $student=>$info){
           $problems = array();
           foreach($info as $problem=>$results){
               $performance = array();
-              //$problem_url="index.php?start=$problem&student=$student";
-              //$problem_link="<a href='$problem_url'>".str_replace("\\/", "/", json_encode($problem)).'</a>';
-              //echo "\t $problem_link resultatai: ";
               $performance['problemName']=$problem;
               $passed = $results[0];
               $performance['passed']=$passed;
@@ -67,7 +65,7 @@ if (!$WS_AUTHINFO['logged_in']) {
           }
           $students[$student]=$problems; //self-descriptive json object easy to handle
       }
-      echo "<pre id='gradesJSON' hidden>" . json_encode($students) . "</pre>";
+      echo "<pre id='gradesJSON' hidden>" . json_encode($students) . "</pre>"; //may add JSON_PRETTY_PRINT
   }
  }
  ?>
