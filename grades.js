@@ -41,6 +41,7 @@ function searchGrades(){
     var matchedStudents = grades.children("div:contains('"+string+"')"); //search through student names
     matchedStudents.stop(true,false); //remove from animation queue and do not jump to end
     matchedStudents.show("fast");
+    matchedStudents.css("height",matchedStudents.outerHeight);
     grades.children("div").children("div").hide("fast");
     var matchedProblems = grades.children("div").children("div:contains('"+string+"')"); //search through problem divs
     matchedProblems.stop(true, false); //stop the animation again

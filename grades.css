@@ -5,7 +5,8 @@
     clear:left;
     background-color: rgb(235,235,235);
     text-align:center;
-    overflow: auto;
+    overflow: visible;
+    height: 0px; /* this is very dirty*/
 }
 
 .problemDiv{
