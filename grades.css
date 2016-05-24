@@ -1,0 +1,21 @@
+.problemDiv.passed{
+    background-color: rgb(230,256,230) !important
+}
+.studentDiv{
+    clear:left;
+    background-color: rgb(235,235,235);
+    text-align:center;
+    overflow: visible;
+    height: 0px; /* this is very dirty*/
+}
+
+.problemDiv{
+    outline: rgb(127,127,127) solid thin;
+    text-align: center;
+    margin: 1%;
+    width: 48%;
+    height: 80px;
+    background-color: rgb(256,230,230);
+    float: left;
+    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2), 0 3px 10px 0 rgba(0, 0, 0, 0.19);
+}

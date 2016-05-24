@@ -1,7 +1,7 @@
 import config
 
-#authinfo = {}  
-#authinfo['username'] = "jurgis.pralgauskis@gmail.com"
+#~ authinfo = {}  
+#~ authinfo['username'] = "jurgis.pralgauskis@gmail.com"
 
 
 result = {}

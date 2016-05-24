@@ -3,3 +3,4 @@
 *ws-config.json*
 grade_cpp_*
 .gitignore
+.idea/*

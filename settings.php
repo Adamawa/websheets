@@ -22,12 +22,12 @@ if (!$WS_AUTHINFO['logged_in']) {
   else {
  ?>
 <p>
-<form action='./settings.php' method='post'>
-      Your instructor can see which problems you have completed, and when.
+    <form action='./settings.php' method='post'>
+          Your instructor can see which problems you have completed, and when.
+          Instructor (enter their Websheets account email address): <input type='text' name='instructor' value='<?php echo $result['settings']['instructor']; ?>' >
+    <input type="submit" value="Save settings">
+    </form>
 <p>
-      Instructor (enter their Websheets account email address): <input type='text' name='instructor' value='<?php echo $result['settings']['instructor']; ?>' >
-<input type="submit" value="Save settings">
-</form>
 
 <?php
   }
