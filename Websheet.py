@@ -240,7 +240,8 @@ class Websheet:
                            "cppflags_add": [],
                            "cppflags_remove": [],
                            "remarks": None,
-                           "sharing": "open-nosol"
+                           "sharing": "open-nosol",
+                           "points":0, # for competition purposes by Tomas Blažauskas
                            }
 
         for field in mandatory_fields:
