@@ -43,12 +43,18 @@ if (!$WS_AUTHINFO['logged_in']) {
       echo "\n  }";
     }
     echo "\n}";*/
-
+      
       $count = 0;
       $students = array();
       echo '<input type="text" id="searchField"><input type="button" value="Search" id="searchButton">';
+      error_reporting (E_ALL );
       foreach($result['grades'] as $student=>$info){
           $problems = array();
+          // $group = null;
+          // if ( array_key_exists('_group',  $result['grades']) ){
+              // $group = $result['grades']['_group'];
+              // unset( $result['grades']['_group']);
+          // }
           foreach($info as $problem=>$results){
               $performance = array();
               $performance['problemName']=$problem;
@@ -63,6 +69,7 @@ if (!$WS_AUTHINFO['logged_in']) {
               $performance['passDate']=$passDate;
               array_push($problems, $performance);
           }
+          // $students["[$group] $student"]=$problems; //self-descriptive json object easy to handle
           $students[$student]=$problems; //self-descriptive json object easy to handle
       }
       echo "<pre id='gradesJSON' hidden>" . json_encode($students) . "</pre>"; //may add JSON_PRETTY_PRINT

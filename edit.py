@@ -231,16 +231,31 @@ if __name__ == "__main__":
 
   if action == 'settings':
     if 'instructor' in request:
-      set_setting(authinfo['username'], 'instructor', request['instructor'])
+      set_setting(authinfo['username'], 'instructor', request['instructor'].strip())
     inst = get_setting(authinfo['username'], 'instructor')
     if inst is None: inst = ""
-    done(success=True, settings={"instructor":inst})
+
+    if 'group' in request:
+      set_setting(authinfo['username'], 'group', request['group'].strip() )
+    group = get_setting(authinfo['username'], 'group')
+    if group is None: group = ""
+
+    # done(success=True, settings={"instructor":inst})
+    done(success=True, settings={"instructor":inst, "group":group })
     
   if action == 'showgrades':
     result = {}
-    for (student,) in config.get_rows(
+    for (student, ) in config.get_rows(
       "select user from ws_settings " +
       "WHERE value = %s AND keyname = 'instructor';", [authinfo['username']]):
+          
+      group = config.get_rows(
+          "select value from ws_settings " +
+          "WHERE user = %s AND keyname = 'group';", [student])
+      
+      group = group[0][0] if group else ""  # take first rows first element
+      group = group and "[%s] "%group # markup a bit
+      
       stuinfo = {}
       for (passed, time, problem) in config.get_rows(
         "SELECT passed, time, problem from ws_history where user = %s order by id asc;", [student]):
@@ -252,7 +267,7 @@ if __name__ == "__main__":
           else:
             curr = (False, prev[1]+1)
           stuinfo[problem] = curr
-      result[student] = stuinfo
+      result[ group + student  ] = stuinfo;   #{'grades':stuinfo, 'group':group }
     done(success=True, grades=result)
     
   internal_error('Unknown action ' + action)
