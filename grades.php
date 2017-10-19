@@ -9,7 +9,10 @@
 <div id='info'><?php echo $GLOBALS['WS_AUTHINFO']['info_span']; ?> </div>
 <p><i>The grades interface is experimental. <a href='mailto:daveagp@gmail.com'>Please send us your feedback or UI suggestions</a>.
 Students indicate their teacher on the <a href='settings.php'>settings page</a>.</i>
-<p>
+<br> 
+You can also see <a href="?action=mygrades">your own grades</a>.
+</p>
+
 <?php
 global $WS_AUTHINFO;
 if (!$WS_AUTHINFO['logged_in']) {
@@ -17,7 +20,8 @@ if (!$WS_AUTHINFO['logged_in']) {
  }
  else {
   require_once('edit.php');
-  $_REQUEST['action'] = 'showgrades';
+  if (!isset( $_REQUEST['action'] ) ) 
+    $_REQUEST['action'] = 'showgrades';  // one could set mygrades
   $editout = run_edit_py();
   //  echo $editout;
   $result = json_decode($editout, true);

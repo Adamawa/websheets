@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import sys, json, config, re
+from collections import OrderedDict
 
 if __name__ == "__main__":
   db = config.connect()
@@ -19,7 +20,7 @@ if __name__ == "__main__":
     cursor.close()   
     db.commit()
     db.close()
-    print(json.dumps(response))
+    print(json.dumps(response)) # , sort_keys=True
     sys.exit(0)
 
   def owner(slug):
@@ -122,7 +123,7 @@ if __name__ == "__main__":
   if not authinfo["logged_in"] and action not in ['listmine', 'load']:
     internal_error("Only logged-in users can edit")
 
-  if action not in ['listmine', 'settings', 'showgrades'] and not valid(problem):
+  if action not in ['listmine', 'settings', 'showgrades', 'mygrades'] and not valid(problem):
     if (action == 'load'):
       done(success=False, message="Requested name does not have valid format: <tt>" + problem + "</tt>")
     else:
@@ -243,12 +244,10 @@ if __name__ == "__main__":
     # done(success=True, settings={"instructor":inst})
     done(success=True, settings={"instructor":inst, "group":group })
     
-  if action == 'showgrades':
+  if action in ( 'showgrades', 'mygrades' ):
     result = {}
-    for (student, ) in config.get_rows(
-      "select user from ws_settings " +
-      "WHERE value = %s AND keyname = 'instructor';", [authinfo['username']]):
-          
+    
+    def get_student_grades(student):
       group = config.get_rows(
           "select value from ws_settings " +
           "WHERE user = %s AND keyname = 'group';", [student])
@@ -267,7 +266,20 @@ if __name__ == "__main__":
           else:
             curr = (False, prev[1]+1)
           stuinfo[problem] = curr
+        stuinfo = OrderedDict(stuinfo.items())
       result[ group + student  ] = stuinfo;   #{'grades':stuinfo, 'group':group }
+    
+    if action=='mygrades':
+        get_student_grades( authinfo['username'] )
+        
+    if action=='showgrades':
+        for (student, ) in config.get_rows(
+          "select user from ws_settings " +
+          "WHERE value = %s AND keyname = 'instructor';", [authinfo['username']]):
+              get_student_grades(student)
+              
+    
+    result = OrderedDict( sorted(result.items()) )  # sort by key
     done(success=True, grades=result)
     
   internal_error('Unknown action ' + action)
