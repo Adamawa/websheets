@@ -24,9 +24,17 @@ if (!$WS_AUTHINFO['logged_in']) {
 <p>
     <form action='./settings.php' method='post'>
           Your instructor can see which problems you have completed, and when.
-          Instructor (enter their Websheets account email address): <input type='text' name='instructor' value='<?php echo $result['settings']['instructor']; ?>' >
-    <input type="submit" value="Save settings">
+          Instructor (enter their Websheets account email address): 
+          <input type='text' name='instructor' value='<?php echo $result['settings']['instructor']; ?>' >
+          
+          <br/>
+          Your group/class/extra_info:
+          <input type='text' name='group' value='<?php echo $result['settings']['group']; ?>' >
+    
+    <br/>
+    <input type="submit"  name="saving" value="Save settings">
     </form>
+<?php if( isset($_REQUEST["saving"]) ) echo "<b>Saved</b>"; ?>
 <p>
 
 <?php
